@@ -122,7 +122,7 @@ class _AquariumScreenState extends State<AquariumScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: Colors.greenAccent,
       appBar: AppBar(title: Text("Virtual Aquarium")),
       body: Center(
   child: Column(
