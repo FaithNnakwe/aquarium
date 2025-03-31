@@ -2,57 +2,56 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
+  static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
-  DatabaseHelper._internal();
+  DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDb();
+    _database = await _initDB();
     return _database!;
   }
 
-  Future<Database> _initDb() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'aquarium.db');
-    return openDatabase(path, onCreate: (db, version) async {
-      await db.execute('''
-        CREATE TABLE aquarium_settings(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          fish_count INTEGER,
-          speed REAL,
-          color TEXT
-        )
-      ''');
-    }, version: 1);
+  Future<Database> _initDB() async {
+    final path = join(await getDatabasesPath(), 'aquarium_settings.db');
+    return await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fish_count INTEGER,
+            speed REAL,
+            color TEXT
+          )
+        ''');
+      },
+    );
   }
 
-  // Save aquarium settings
   Future<void> saveSettings(int fishCount, double speed, String color) async {
-    final db = await database;
+    final db = await instance.database;
     await db.insert(
-      'aquarium_settings',
+      'settings',
       {'fish_count': fishCount, 'speed': speed, 'color': color},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
-  // Load aquarium settings
   Future<Map<String, dynamic>?> loadSettings() async {
-    final db = await database;
-    final result = await db.query('aquarium_settings', limit: 1);
+    final db = await instance.database;
+    final result = await db.query('settings', limit: 1);
+
     if (result.isNotEmpty) {
       return result.first;
-    } else {
-      return null;
     }
+    return null;
   }
 
-  // Clear aquarium settings
   Future<void> clearSettings() async {
-    final db = await database;
-    await db.delete('aquarium_settings');
+    final db = await instance.database;
+    await db.delete('settings');
   }
 }
