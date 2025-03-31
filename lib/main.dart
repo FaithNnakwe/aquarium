@@ -154,11 +154,3 @@ class _AquariumScreenState extends State<AquariumScreen> with SingleTickerProvid
     );
   }
 }
-
-// Add these dependencies to pubspec.yaml
-// dependencies:
-//   flutter:
-//     sdk: flutter
-//   sqflite: ^2.2.6
-//   path_provider: ^2.0.11
-//   shared_preferences: ^2.0.15
