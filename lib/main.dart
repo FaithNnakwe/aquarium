@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'helper.dart';
 
 void main() => runApp(AquariumApp());
 
@@ -40,117 +41,96 @@ class Fish {
   }
 }
 
-class AquariumScreen extends StatefulWidget {
+// Example usage in your widget
+class AquariumPage extends StatefulWidget {
   @override
-  _AquariumScreenState createState() => _AquariumScreenState();
+  _AquariumPageState createState() => _AquariumPageState();
 }
 
-class _AquariumScreenState extends State<AquariumScreen> with SingleTickerProviderStateMixin {
-  List<Fish> fishList = [];
-  Color selectedColor = Colors.blue;
-  double selectedSpeed = 1.0;
-  bool collisionEnabled = false;
-  late AnimationController _controller;
+class _AquariumPageState extends State<AquariumPage> {
+  int fishCount = 0;
+  double fishSpeed = 1.0;
+  Color fishColor = Colors.blue;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(seconds: 2), vsync: this)..repeat();
-    _controller.addListener(() {
-      setState(() {
-    for (int i = 0; i < fishList.length; i++) {
-      fishList[i].move();
-      for (int j = i + 1; j < fishList.length; j++) {
-        _checkForCollision(fishList[i], fishList[j]); // <-- Collision check happens here (Line 53)
-      }
-    }
-  });
-    });
-    _loadPreferences();
+    _loadSettings();
   }
 
-  void _addFish() {
-    if (fishList.length < 10) {
+  // Load settings from SQLite
+  _loadSettings() async {
+    final settings = await DatabaseHelper().loadSettings();
+    if (settings != null) {
       setState(() {
-        fishList.add(Fish(color: selectedColor, speed: selectedSpeed));
-      });
-      _savePreferences();
-    }
-  }
-
-  void _checkForCollision(Fish fish1, Fish fish2) {
-    if ((fish1.position.dx - fish2.position.dx).abs() < 20 &&
-        (fish1.position.dy - fish2.position.dy).abs() < 20) {
-      setState(() {
-        fish1.color = Random().nextBool() ? Colors.blue : Colors.red;
-        fish2.color = Random().nextBool() ? Colors.green : Colors.yellow;
-        fish1.dx = -fish1.dx;
-        fish1.dy = -fish1.dy;
-        fish2.dx = -fish2.dx;
-        fish2.dy = -fish2.dy;
+        fishCount = settings['fish_count'];
+        fishSpeed = settings['speed'];
+        fishColor = Color(int.parse(settings['color']));
       });
     }
   }
 
-  void _savePreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setInt('fish_count', fishList.length);
-    prefs.setDouble('fish_speed', selectedSpeed);
-    prefs.setInt('fish_color', selectedColor.value);
+  // Save settings to SQLite
+  _saveSettings() async {
+    await DatabaseHelper().saveSettings(fishCount, fishSpeed, fishColor.value.toString());
   }
 
-  void _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
+  // Clear settings
+  _clearSettings() async {
+    await DatabaseHelper().clearSettings();
     setState(() {
-      int count = prefs.getInt('fish_count') ?? 0;
-      selectedSpeed = prefs.getDouble('fish_speed') ?? 1.0;
-      selectedColor = Color(prefs.getInt('fish_color') ?? Colors.blue.value);
-      fishList = List.generate(count, (index) => Fish(color: selectedColor, speed: selectedSpeed));
-    });
-  }
-
-  void _clearData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    setState(() {
-      fishList.clear();
-      selectedSpeed = 1.0;
-      selectedColor = Colors.blue;
+      fishCount = 0;
+      fishSpeed = 1.0;
+      fishColor = Colors.blue;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.greenAccent,
-      appBar: AppBar(title: Text("Virtual Aquarium")),
+      appBar: AppBar(title: Text('Virtual Aquarium')),
       body: Center(
-  child: Column(
-    mainAxisSize: MainAxisSize.min, // Ensures the column takes minimal vertical space
-    children: [
-      Container(
-        width: 300,
-        height: 300,
-        decoration: BoxDecoration(color: Colors.blue[200], border: Border.all(color: Colors.black)),
-        child: Stack(
-          children: fishList.map((fish) => Positioned(
-            left: fish.position.dx,
-            top: fish.position.dy,
-            child: Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: fish.color),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: Colors.blue[200], // Aquarium background
+                border: Border.all(color: Colors.black),
+              ),
+              child: Stack(
+                children: fishList.map((fish) => Positioned(
+                  left: fish.position.dx,
+                  top: fish.position.dy,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: fish.color,
+                    ),
+                  ),
+                )).toList(),
+              ),
             ),
-          )).toList(),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _addFish,
+              child: Text("Add Fish"),
+            ),
+            ElevatedButton(
+              onPressed: _saveSettings,
+              child: Text("Save Settings"),
+            ),
+            ElevatedButton(
+              onPressed: _clearSettings,
+              child: Text("Clear Data"),
+            ),
+          ],
         ),
       ),
-      const SizedBox(height: 20), // Adds spacing between the aquarium and buttons
-      ElevatedButton(onPressed: _addFish, child: Text("Add Fish")),
-      ElevatedButton(onPressed: _savePreferences, child: Text("Save Settings")),
-      ElevatedButton(onPressed: _clearData, child: Text("Clear Data")),
-    ],
-  ),
-),
     );
   }
 }
