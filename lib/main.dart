@@ -1,7 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(AquariumApp());
@@ -60,10 +58,13 @@ class _AquariumScreenState extends State<AquariumScreen> with SingleTickerProvid
     _controller = AnimationController(duration: const Duration(seconds: 2), vsync: this)..repeat();
     _controller.addListener(() {
       setState(() {
-        for (var fish in fishList) {
-          fish.move();
-        }
-      });
+    for (int i = 0; i < fishList.length; i++) {
+      fishList[i].move();
+      for (int j = i + 1; j < fishList.length; j++) {
+        _checkForCollision(fishList[i], fishList[j]); // <-- Collision check happens here (Line 53)
+      }
+    }
+  });
     });
     _loadPreferences();
   }
@@ -82,6 +83,11 @@ class _AquariumScreenState extends State<AquariumScreen> with SingleTickerProvid
         (fish1.position.dy - fish2.position.dy).abs() < 20) {
       setState(() {
         fish1.color = Random().nextBool() ? Colors.blue : Colors.red;
+        fish2.color = Random().nextBool() ? Colors.green : Colors.yellow;
+        fish1.dx = -fish1.dx;
+        fish1.dy = -fish1.dy;
+        fish2.dx = -fish2.dx;
+        fish2.dy = -fish2.dy;
       });
     }
   }
@@ -116,30 +122,35 @@ class _AquariumScreenState extends State<AquariumScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.blue,
       appBar: AppBar(title: Text("Virtual Aquarium")),
-      body: Column(
-        children: [
-          Container(
-            width: 300,
-            height: 300,
-            decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-            child: Stack(
-              children: fishList.map((fish) => Positioned(
-                left: fish.position.dx,
-                top: fish.position.dy,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: fish.color),
-                ),
-              )).toList(),
+      body: Center(
+  child: Column(
+    mainAxisSize: MainAxisSize.min, // Ensures the column takes minimal vertical space
+    children: [
+      Container(
+        width: 300,
+        height: 300,
+        decoration: BoxDecoration(color: Colors.blue[200], border: Border.all(color: Colors.black)),
+        child: Stack(
+          children: fishList.map((fish) => Positioned(
+            left: fish.position.dx,
+            top: fish.position.dy,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: fish.color),
             ),
-          ),
-          ElevatedButton(onPressed: _addFish, child: Text("Add Fish")),
-          ElevatedButton(onPressed: _savePreferences, child: Text("Save Settings")),
-          ElevatedButton(onPressed: _clearData, child: Text("Clear Data")),
-        ],
+          )).toList(),
+        ),
       ),
+      const SizedBox(height: 20), // Adds spacing between the aquarium and buttons
+      ElevatedButton(onPressed: _addFish, child: Text("Add Fish")),
+      ElevatedButton(onPressed: _savePreferences, child: Text("Save Settings")),
+      ElevatedButton(onPressed: _clearData, child: Text("Clear Data")),
+    ],
+  ),
+),
     );
   }
 }
